@@ -1306,7 +1306,7 @@ class Tagger(QtWidgets.QApplication):
             for file_cluster in process_events_iter(result):
                 files = set(file_cluster.files)
                 if len(files) > 1:
-                    cluster = self.load_cluster(file_cluster.title, file_cluster.artist)
+                    cluster = self.load_cluster(file_cluster.metadata)
                 else:
                     cluster = self.unclustered_files
                 cluster.add_files(files)
@@ -1314,12 +1314,12 @@ class Tagger(QtWidgets.QApplication):
         if callback:
             callback()
 
-    def load_cluster(self, name, artist):
+    def load_cluster(self, metadata):
         for cluster in self.clusters:
             cm = cluster.metadata
-            if name == cm['album'] and artist == cm['albumartist']:
+            if metadata['album'] == cm['album'] and metadata['artist'] == cm['albumartist']:
                 return cluster
-        cluster = Cluster(name, artist)
+        cluster = Cluster(metadata)
         self.clusters.append(cluster)
         self.cluster_added.emit(cluster)
         return cluster

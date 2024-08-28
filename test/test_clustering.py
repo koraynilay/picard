@@ -28,6 +28,7 @@ from picard.cluster import (
     tokenize,
 )
 from picard.file import File
+from picard.metadata import Metadata
 
 
 class TokenizeTest(PicardTestCase):
@@ -141,7 +142,7 @@ class FileClusterTest(PicardTestCase):
     def test_single(self):
         file = File('foo')
         fc = FileCluster()
-        fc.add('album 1', 'artist 1', file)
+        fc.add(Metadata(album='album 1', artist='artist 1'), file)
         self.assertEqual('album 1', fc.title)
         self.assertEqual('artist 1', fc.artist)
         self.assertEqual([file], list(fc.files))
@@ -155,11 +156,11 @@ class FileClusterTest(PicardTestCase):
             File('foo5'),
         ]
         fc = FileCluster()
-        fc.add('album 1', 'artist1', files[0])
-        fc.add('Album 1', 'artist 2', files[1])
-        fc.add('album\t1', 'Artist 1', files[2])
-        fc.add('Album 1', 'Artist 2', files[3])
-        fc.add('album 2', 'Artist 1', files[4])
+        fc.add(Metadata(album='album 1', artist='artist1'), files[0])
+        fc.add(Metadata(album='Album 1', artist='artist 2'), files[1])
+        fc.add(Metadata(album='album\t1', artist='Artist 1'), files[2])
+        fc.add(Metadata(album='Album 1', artist='Artist 2'), files[3])
+        fc.add(Metadata(album='album 2', artist='Artist 1'), files[4])
         self.assertEqual('Album 1', fc.title)
         self.assertEqual('Artist 1', fc.artist)
         self.assertEqual(files, list(fc.files))

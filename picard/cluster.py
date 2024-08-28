@@ -52,7 +52,10 @@ from picard.item import (
     FileListItem,
     Item,
 )
-from picard.metadata import SimMatchRelease
+from picard.metadata import (
+    Metadata,
+    SimMatchRelease,
+)
 from picard.track import Track
 from picard.util import (
     album_artist_from_path,
@@ -96,9 +99,12 @@ class Cluster(FileList):
 
     def __init__(self, name, artist="", special=False, related_album=None, hide_if_empty=False):
         super().__init__()
-        self.metadata['album'] = name
-        self.metadata['albumartist'] = artist
-        self.metadata['totaltracks'] = 0
+        if isinstance(name, Metadata):
+            self.metadata = name
+        else:
+            self.metadata['album'] = name
+            self.metadata['albumartist'] = artist
+            self.metadata['totaltracks'] = 0
         self.special = special
         self.hide_if_empty = hide_if_empty
         self.related_album = related_album
@@ -325,9 +331,14 @@ class Cluster(FileList):
             # Only used for grouping and to provide cluster title / artist - not added to file tags.
             album, artist = album_artist_from_path(file.filename, album, artist)
 
+            metadata['album'] = album
+            metadata['albumartist'] = artist or various_artists
+
+            print(file.filename, metadata._store)
+
             token = tokenize(album)
             if token:
-                cluster_list[token].add(album, artist or various_artists, file)
+                cluster_list[token].add(metadata, file)
 
         yield from cluster_list.values()
 
@@ -414,16 +425,15 @@ class ClusterList(list, Item):
 class FileCluster:
     def __init__(self):
         self._files = []
-        self._artist_counts = Counter()
-        self._artists = defaultdict(Counter)
-        self._titles = Counter()
+        """ _metadata_counters = { tag1: Counter(), tag2: Counter() } """
+        self._metadata_counters = {}
 
-    def add(self, album, artist, file):
+    def add(self, metadata, file):
         self._files.append(file)
-        token = tokenize(artist)
-        self._artist_counts[token] += 1
-        self._artists[token][artist] += 1
-        self._titles[album] += 1
+        for tag, value in metadata.items():
+            if tag not in self._metadata_counters:
+                self._metadata_counters[tag] = Counter()
+            self._metadata_counters[tag][value] += 1
 
     @property
     def files(self):
@@ -431,14 +441,19 @@ class FileCluster:
 
     @property
     def artist(self):
-        tokenized_artist = self._artist_counts.most_common(1)[0][0]
-        candidates = self._artists[tokenized_artist]
-        return candidates.most_common(1)[0][0]
+        return self.metadata['albumartist']
 
     @property
     def title(self):
         # Find the most common title
-        return self._titles.most_common(1)[0][0]
+        return self.metadata['album']
+
+    @property
+    def metadata(self):
+        cluster_metadata = Metadata()
+        for tag in self._metadata_counters:
+            cluster_metadata[tag] = self._metadata_counters[tag].most_common(1)[0][0]
+        return cluster_metadata
 
 
 _re_non_alphanum = re.compile(r'\W', re.UNICODE)
